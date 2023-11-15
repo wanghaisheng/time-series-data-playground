@@ -38,3 +38,6 @@ https://github.com/wannesm/dtaidistance
 https://github.com/predict-idlab/plotly-resampler
 
 
+https://huggingface.co/spaces/seyia92coding/Popular_Spotify_Albums
+
+
