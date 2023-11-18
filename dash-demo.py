@@ -7,7 +7,7 @@ from statsmodels.tsa.seasonal import seasonal_decompose
 from statsmodels.tsa.seasonal import MSTL
 import numpy as np
 from datetime import datetime, timedelta, date
-
+from scipy.stats import bootstrap
 # Incorporate data
 df = pd.read_csv('贺总.csv')
 
@@ -26,6 +26,79 @@ print(zuhe_options.sort())
 app = Dash(__name__)
 
 
+
+
+def average(data):
+    return sum(data) / len(data)
+def handbootstrap(data, B, c, func):
+# ......
+# 计算bootstrap置信区间
+# :param data: array保存样本数据
+# :param B:抽样次数通常B>=1000
+# :param c:置信水平
+# :param func:样本估计量
+# :return:bootstrap置信区间上下限
+# "..."
+    array = np.array(data)
+    n = len(array)
+    sample_result_arr = []
+    for i in range(B):
+        index_arr = np.random.randint(0, n, size=n)
+        data_sample = array[index_arr]
+        sample_result = func(data_sample)
+        sample_result_arr.append(sample_result)
+    a = 1 - c
+    k1 = int(B*a/2)
+    k2 = int(B*(1-a/2))
+    auc_sample_arr_sorted = sorted(sample_result_arr)
+    lower= auc_sample_arr_sorted[k1]
+    higher= auc_sample_arr_sorted[k2]
+    return lower, higher
+
+
+# https://library.virginia.edu/data/articles/bootstrap-estimates-of-confidence-intervals
+
+def resample(data, seed):
+    '''
+    Creates a resample of the provided data that is the same length as the provided data
+    '''
+    import random
+    random.seed(seed)
+    res = random.choices(data, k=len(data))
+    return res
+
+# def next_bootstrap(data,cishu=10000,):
+    
+#     # Extract the distance, x, and velocity, y, values from our pandas dataframe 
+#     distances = data["x"].values
+#     velocities = data["y"].values
+
+#     # Zip our distances and velocities together and store the zipped pairs as a list
+#     dist_vel_pairs = list(zip(distances, velocities))
+
+#     # Print out the first 5 zipped distance-velocity pairs
+#     # print(dist_vel_pairs[:5])
+#     # Generate 10,000 resamples with a list comprehension
+#     boot_resamples = [resample(dist_vel_pairs, val) for val in range(cishu)]
+
+#     # Calculate beta from linear regression for each of the 10,000 resamples and store them in a list called "betas"
+#     betas = []
+
+#     for res in boot_resamples:
+#         # "Unzip" the resampled pairs to separate x and y so we can use them in the LinearRegression() function
+#         dist_unzipped, vel_unzipped = zip(*res)
+#         dist_unzipped = np.array(dist_unzipped).reshape((-1, 1))
+        
+#         # Find linear coefficient beta for this resample and append it to a list of betas
+#         betas.append(LinearRegression(fit_intercept=False).fit(dist_unzipped, vel_unzipped).coef_[0])
+
+#     # Print out the first 5 beta values 
+#     # print(betas[:5])
+
+#     # Calculate the values of 2.5th and 97.5th percentiles of our distribution of betas
+#     conf_interval = np.percentile(betas, [2.5,97.5])
+#     # print(conf_interval)
+#     return conf_interval
 app.layout = html.Div(children=[
 html.H2("历史自和系数"),    
     html.Div(children='说明-第一个版本涵盖了心率+心肝脾肺肾六大维度15个组合的同频程度维度的15个特征'),
@@ -168,24 +241,73 @@ def update_graph(phones,daterange,zuhe,suanfa):
         print('日期范围不对劲')
 
     print(f'完成用户数据日期范围过滤:{len(data)}')
-    print(data.head(5))
+    # print(data.head(5))
     new=None
     fig=None
     fig_trend=None
     fig_seasonal=None
     fig_resid=None
+    rng = np.random.default_rng()
+    
     if zuhe =='全部':
         print('选择显示总和')
         new=data
         fig = px.line(new, x='date', y='index')
         print('完成用户数据总体同频程度的曲线图绘制')
-        fig_hist = px.histogram(new, x='value', histnorm='percent')
+        
+        res = bootstrap((new['index'],), np.std, confidence_level=0.95,
+                        random_state=rng)   
+        # descri=
+        print(new['index'].describe(percentiles=[.05,.1,.25, .5, .75,.9,.95]))
+        xbar = new['index'].mean()
+        xstd = new['index'].std()
+        print('标准差法异常值上限检测:\n',xbar + 2 * xstd,any(new['index'] > xbar + 2 * xstd))
+        print('标准差法异常值下限检测:\n',xbar - 2 * xstd,any(new['index'] < xbar - 2 * xstd))
 
+        #异常值 箱线图法
+        Q1 = new['index'].quantile(q = 0.25)
+        Q3 = new['index'].quantile(q = 0.75)
+        IQR = Q3 -Q1
+        print('箱线图法异常值上限检测:\n', Q3 + 1.5*IQR,any(new['index'] > Q3 + 1.5*IQR))
+        print('箱线图法异常值下限检测:\n',Q1 - 1.5*IQR,any(new['index'] < Q1 - 1.5*IQR))
+
+        
+        
+        # https://www.cnblogs.com/tinglele527/p/11955103.html
+        # 异常值的判定方法：
+
+        # 1.n个标准差法
+
+        # 2.箱线图法
+
+        # 标准差法，就是用以样本均值+样本标准差为基准，如果样本离平均值相差2个标准差以上的就是异常值
+
+        # 箱线图法：以上下四分位作为参考， x > Q3+nIQR 或者 x < Q1 - nIQR 简单地理解，就是如果样本值不在上下四分位+标准差范围内，就是异常值        
+        print(f'假设正态分布，整体自和系数的置信区间为:{res.confidence_interval}')     
+        
+        
+        
+        confidence_intervals = new['index'].quantile(q=[0.025, 0.975])
+        print(confidence_intervals)
+# https://www.analyticsvidhya.com/blog/2022/01/understanding-confidence-intervals-with-python/
+        import scikits.bootstrap as boot
+        conf_interval=boot.ci(new['index'], np.average)
+        print(f'假设非正态分布，scikits整体自和系数的置信区间为:{conf_interval}')     
+
+        
+        conf_interval=handbootstrap(new['index'],10000,0.95,average)
+        print(f'假设非正态分布，handbootstrap整体自和系数的置信区间为:{conf_interval}')     
+        
+ 
+        fig_hist = px.histogram(new, x='index', histnorm='percent')
         result=None
         if suanfa=='pusu':
-            result = seasonal_decompose(new['value'], model='additive',period=7)
+            result = seasonal_decompose(new['index'], model='additive',period=7)
             if result:
                 print(result.trend)
+                for index,value in result.trend.itertuples():
+                    if value >conf_interval[1]:
+                        print(index)
                 print(result.seasonal)
                 print(result.resid)
                 # print(result.observed)
@@ -197,12 +319,12 @@ def update_graph(phones,daterange,zuhe,suanfa):
             return fig,fig_hist,fig_trend,fig_seasonal,fig_resid
         elif suanfa=='mtl':
             stl_kwargs = {"seasonal_deg": 0} 
-            model = MSTL(new['value'], periods=(24), stl_kwargs=stl_kwargs)
+            model = MSTL(new['index'], periods=(24), stl_kwargs=stl_kwargs)
             result = model.fit()
             if result:
-                print(result.trend)
-                print(result.seasonal)
-                print(result.resid)
+                # print(result.trend)
+                # print(result.seasonal)
+                # print(result.resid)
                 # print(result.observed)
 
                 fig_trend = px.line(result.trend)
@@ -217,7 +339,29 @@ def update_graph(phones,daterange,zuhe,suanfa):
         print('wait to choose')
         new=data.loc[data.pairs==zuhe]
         fig = px.line(data.loc[data.pairs==zuhe], x='date', y='value') 
-        print('完成用户数据两两之间特定日期范围的曲线图绘制')
+        print(f'完成用户数据{zuhe}两两之间特定日期范围的曲线图绘制')
+        print(new['value'].describe(percentiles=[.05,.1,.25, .5, .75,.9,.95]))
+        xbar = new['value'].mean()
+        xstd = new['value'].std()
+        print('标准差法异常值上限检测:\n',xbar + 2 * xstd,any(new['value'] > xbar + 2 * xstd))
+        print('标准差法异常值下限检测:\n',xbar - 2 * xstd,any(new['value'] < xbar - 2 * xstd))
+
+        #异常值 箱线图法
+        Q1 = new['value'].quantile(q = 0.25)
+        Q3 = new['value'].quantile(q = 0.75)
+        IQR = Q3 -Q1
+        print('箱线图法异常值上限检测:\n', Q3 + 1.5*IQR,any(new['value'] > Q3 + 1.5*IQR))
+        print('箱线图法异常值下限检测:\n',Q1 - 1.5*IQR,any(new['value'] < Q1 - 1.5*IQR))
+        res = bootstrap((new['value'],), np.std, confidence_level=0.9,
+                        random_state=rng)   
+        print(f'假设正态分布，bootstrap 组合{zuhe}两两之间自和系数的置信区间为:{res.confidence_interval}')     
+
+        
+        confidence_intervals = new['value'].quantile(q=[0.025, 0.975])
+        print(f'假设正态分布，quantile 组合{zuhe}两两之间自和系数的置信区间为:{res.confidence_interval}')     
+
+        conf_interval=handbootstrap(new['value'],10000,0.9,average)
+        print(f'假设非正态分布，handbootstrap 组合{zuhe}两两之间自和系数的置信区间为:{conf_interval}')     
         fig_hist = px.histogram(new, x='value', histnorm='percent')
 
         result=None
@@ -239,9 +383,9 @@ def update_graph(phones,daterange,zuhe,suanfa):
             model = MSTL(new['value'], periods=(24), stl_kwargs=stl_kwargs)
             result = model.fit()
             if result:
-                print(result.trend)
-                print(result.seasonal)
-                print(result.resid)
+                # print(result.trend)
+                # print(result.seasonal)
+                # print(result.resid)
                 # print(result.observed)
 
                 fig_trend = px.line(result.trend)
@@ -263,3 +407,4 @@ if __name__ == '__main__':
     app.title = "用户阴阳自和趋势分析"
     
     app.run(debug=True)
+# https://haochendaily.com/anomaly-detection-process.html
