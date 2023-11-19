@@ -118,7 +118,7 @@ html.H2("历史自和系数"),
             size="sm"
         ),
     html.Hr(),
-    html.Div(children='历史走势'),
+    html.Div(children='历史自和系数变化'),
 
     dcc.Graph(figure={}, id='mingxi-graph'),
     
@@ -127,13 +127,13 @@ html.H2("历史自和系数"),
      html.Div(children='得分分布范围'),
    
     dcc.Graph(figure={}, id='mingxi-graph-hist'),
-     html.Div(children='外部因素影响/得分波动趋势'),
+     html.Div(children='外部因素影响/变化趋势'),
 
     dcc.Graph(figure={}, id='mingxi-graph-trend'),
-     html.Div(children='人体固有周期/得分波动周期'),
+     html.Div(children='人体固有周期/变化周期'),
     
     dcc.Graph(figure={}, id='mingxi-graph-seasonal'),
-     html.Div(children='人体内稳态/得分波动内在本质'),
+     html.Div(children='人体内稳态/变化内在本质'),
     
     dcc.Graph(figure={}, id='mingxi-graph-resid'),
 
