@@ -115,7 +115,7 @@ html.H2("历史自和系数"),
     dmc.Text("请选择趋势分解算法", transform="capitalize"),    
 # https://zhuanlan.zhihu.com/p/88103863
     dmc.RadioGroup(
-            [dmc.Radio(i, value=i) for i in  ['经典滑动平均','MSTL']],
+            [dmc.Radio(i, value=i) for i in  ['经典滑动平均','MSTL改进']],
             id='mingxi-suanfa-input',
             value='suanfa',
             size="sm"
