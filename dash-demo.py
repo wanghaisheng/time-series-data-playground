@@ -112,10 +112,10 @@ html.H2("历史自和系数"),
 
 
     
-    dmc.Text("请选择分解算法", transform="capitalize"),    
-
+    dmc.Text("请选择趋势分解算法", transform="capitalize"),    
+# https://zhuanlan.zhihu.com/p/88103863
     dmc.RadioGroup(
-            [dmc.Radio(i, value=i) for i in  ['pusu','mtl']],
+            [dmc.Radio(i, value=i) for i in  ['经典滑动平均','MSTL']],
             id='mingxi-suanfa-input',
             value='suanfa',
             size="sm"
@@ -403,7 +403,7 @@ def update_graph(dataset,phones,daterange,zuhe,suanfa):
     
             fig_hist = px.histogram(new, x='index', histnorm='percent')
             result=None
-            if suanfa=='pusu':
+            if suanfa=='经典滑动平均':
                 result = seasonal_decompose(new['index'], model='additive',period=7)
                 if result:
                     # print(result.trend)
@@ -506,7 +506,7 @@ def update_graph(dataset,phones,daterange,zuhe,suanfa):
 
                                   
                 return fig,descri,fig_hist,fig_trend,fig_seasonal,fig_resid,table2
-            elif suanfa=='mtl':
+            elif suanfa=='MSTL改进':
                 stl_kwargs = {"seasonal_deg": 0} 
                 model = MSTL(new['index'], periods=(24), stl_kwargs=stl_kwargs)
                 result = model.fit()
@@ -536,8 +536,58 @@ def update_graph(dataset,phones,daterange,zuhe,suanfa):
                     fig_seasonal = px.line(result.seasonal)
                     fig_resid = px.line(result.resid)
                     print('用户全部数据的mstl方法分解完成')
+                    
+                                        
+                    # Get unique pairs
+                    unique_pairs = new['pairs'].unique()
 
-                return fig,descri,fig_hist,fig_trend,fig_seasonal,fig_resid
+                    # Generate all possible combinations of pairs
+                    pair_combinations = list(combinations(unique_pairs, 2))
+                    # Calculate correlation for each pair combination
+                    print(pair_combinations)
+                    
+                        
+                    header1 = [
+                        html.Thead(
+                            html.Tr(
+                                [
+                                    html.Th("两两组合"),
+                                    html.Th("相关性"),
+                                ]
+                            )
+                        )
+                    ]
+                    rows1=[]
+
+                    for pair1, pair2 in pair_combinations:
+                        pair1_df = new[new['pairs'] == pair1].set_index('date')['value']
+                        pair2_df = new[new['pairs'] == pair2].set_index('date')['value']
+
+                        # Calculate the correlation between the pairs
+                        correlation = pair1_df.corr(pair2_df)
+                        out=f"Correlation between {pair1} and {pair2}: {correlation}"
+                        # print(out)
+                        # print(correlation > 0.5)
+                        # print(type(correlation))
+                        if correlation > 0.5:
+                            row = html.Tr([ html.Td(f"{pair1} and {pair2}"),html.Td(correlation)])
+                            
+                            rows1.append(row)
+                            
+                        elif correlation < -0.5:
+                            row = html.Tr([ html.Td(f"{pair1} and {pair2}"),html.Td(correlation)])
+                            
+                            rows1.append(row)
+                            
+                        else:
+                            pass   
+
+
+                    body1 = [html.Tbody(rows1)]
+
+                    table2=dmc.Table(header1 + body1)   
+
+                return fig,descri,fig_hist,fig_trend,fig_seasonal,fig_resid,table2
             else:
                 print('请选择算法')
             print('完成用户数据日期范围的趋势图分解绘制')                
@@ -602,7 +652,7 @@ def update_graph(dataset,phones,daterange,zuhe,suanfa):
             fig_hist = px.histogram(new, x='value', histnorm='percent')
 
             result=None
-            if suanfa=='pusu':
+            if suanfa=='经典滑动平均':
                 result = seasonal_decompose(new['value'], model='additive',period=7)
                 if result:
                     # print(result.trend)
@@ -630,9 +680,59 @@ def update_graph(dataset,phones,daterange,zuhe,suanfa):
                     fig_seasonal = px.line(result.seasonal)
                     fig_resid = px.line(result.resid)
                     print(f'用户两两{zuhe}数据的朴素方法分解完成')
+                    
+                                        
+                    # Get unique pairs
+                    unique_pairs = new['pairs'].unique()
 
-                return fig,descri,fig_hist,fig_trend,fig_seasonal,fig_resid
-            elif suanfa=='mtl':
+                    # Generate all possible combinations of pairs
+                    pair_combinations = list(combinations(unique_pairs, 2))
+                    # Calculate correlation for each pair combination
+                    print(pair_combinations)
+                    
+                        
+                    header1 = [
+                        html.Thead(
+                            html.Tr(
+                                [
+                                    html.Th("两两组合"),
+                                    html.Th("相关性"),
+                                ]
+                            )
+                        )
+                    ]
+                    rows1=[]
+
+                    for pair1, pair2 in pair_combinations:
+                        pair1_df = new[new['pairs'] == pair1].set_index('date')['value']
+                        pair2_df = new[new['pairs'] == pair2].set_index('date')['value']
+
+                        # Calculate the correlation between the pairs
+                        correlation = pair1_df.corr(pair2_df)
+                        out=f"Correlation between {pair1} and {pair2}: {correlation}"
+                        # print(out)
+                        # print(correlation > 0.5)
+                        # print(type(correlation))
+                        if correlation > 0.5:
+                            row = html.Tr([ html.Td(f"{pair1} and {pair2}"),html.Td(correlation)])
+                            
+                            rows1.append(row)
+                            
+                        elif correlation < -0.5:
+                            row = html.Tr([ html.Td(f"{pair1} and {pair2}"),html.Td(correlation)])
+                            
+                            rows1.append(row)
+                            
+                        else:
+                            pass   
+
+
+                    body1 = [html.Tbody(rows1)]
+
+                    table2=dmc.Table(header1 + body1)   
+
+                return fig,descri,fig_hist,fig_trend,fig_seasonal,fig_resid,table2
+            elif suanfa=='MSTL改进':
                 stl_kwargs = {"seasonal_deg": 0} 
                 model = MSTL(new['value'], periods=(24), stl_kwargs=stl_kwargs)
                 result = model.fit()
@@ -662,8 +762,58 @@ def update_graph(dataset,phones,daterange,zuhe,suanfa):
                     fig_seasonal = px.line(result.seasonal)
                     fig_resid = px.line(result.resid)
                     print(f'用户两两{zuhe}数据的mstl方法分解完成')
+                    
+                                        
+                    # Get unique pairs
+                    unique_pairs = new['pairs'].unique()
 
-                return fig,descri,fig_hist,fig_trend,fig_seasonal,fig_resid
+                    # Generate all possible combinations of pairs
+                    pair_combinations = list(combinations(unique_pairs, 2))
+                    # Calculate correlation for each pair combination
+                    print(pair_combinations)
+                    
+                        
+                    header1 = [
+                        html.Thead(
+                            html.Tr(
+                                [
+                                    html.Th("两两组合"),
+                                    html.Th("相关性"),
+                                ]
+                            )
+                        )
+                    ]
+                    rows1=[]
+
+                    for pair1, pair2 in pair_combinations:
+                        pair1_df = new[new['pairs'] == pair1].set_index('date')['value']
+                        pair2_df = new[new['pairs'] == pair2].set_index('date')['value']
+
+                        # Calculate the correlation between the pairs
+                        correlation = pair1_df.corr(pair2_df)
+                        out=f"Correlation between {pair1} and {pair2}: {correlation}"
+                        # print(out)
+                        # print(correlation > 0.5)
+                        # print(type(correlation))
+                        if correlation > 0.5:
+                            row = html.Tr([ html.Td(f"{pair1} and {pair2}"),html.Td(correlation)])
+                            
+                            rows1.append(row)
+                            
+                        elif correlation < -0.5:
+                            row = html.Tr([ html.Td(f"{pair1} and {pair2}"),html.Td(correlation)])
+                            
+                            rows1.append(row)
+                            
+                        else:
+                            pass   
+
+
+                    body1 = [html.Tbody(rows1)]
+
+                    table2=dmc.Table(header1 + body1)   
+
+                return fig,descri,fig_hist,fig_trend,fig_seasonal,fig_resid,table2
             else:
                 print('请选择算法')
             print('完成用户数据日期范围的趋势图分解绘制')        
