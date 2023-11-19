@@ -9,6 +9,9 @@ import numpy as np
 from datetime import datetime, timedelta, date
 from scipy.stats import bootstrap
 # Incorporate data
+import plotly.graph_objects as go
+import plotly.io as pio
+from itertools import combinations
 
 app = Dash(__name__)
 # 把顺序排列的一组数据分割为若干相等部分的分割点的数值即为相应的分位数（quantile）。中位数是分位数中最简单的一种，它将数据等分成两分。由于四分位数（quartile）则是将数据按照大小顺序排序后，把数据分割成四等分的三个分割点上的数值。对原始数据，四分位数的位置一般为，，。如果四分位数的位置不是整数，则四分位数等于前后两个数的加权平均。
@@ -136,6 +139,7 @@ html.H2("历史自和系数"),
      html.Div(children='人体内稳态/变化内在本质'),
     
     dcc.Graph(figure={}, id='mingxi-graph-resid'),
+    html.Div(children={}, id="statics-liangliang"),
 
     # html.Div(children='所有数据记录'),
 
@@ -220,6 +224,8 @@ def first_callback(dataset):
     Output(component_id='mingxi-graph-trend', component_property='figure'),
     Output(component_id='mingxi-graph-seasonal', component_property='figure'),
     Output(component_id='mingxi-graph-resid', component_property='figure'),
+    Output(component_id='statics-liangliang', component_property='children'),
+
     Input(component_id='mingxi-dataset-input', component_property='value'),
 
     Input(component_id='mingxi-phones-input', component_property='value'),
@@ -432,7 +438,74 @@ def update_graph(dataset,phones,daterange,zuhe,suanfa):
                     fig_seasonal = px.line(result.seasonal)
                     fig_resid = px.line(result.resid)
                     print('用户全部数据的朴素方法分解完成')
-                return fig,descri,fig_hist,fig_trend,fig_seasonal,fig_resid
+                    
+                    
+                                        
+                    # Get unique pairs
+                    unique_pairs = new['pairs'].unique()
+
+                    # Generate all possible combinations of pairs
+                    pair_combinations = list(combinations(unique_pairs, 2))
+                    # Calculate correlation for each pair combination
+                    print(pair_combinations)
+                    
+                        
+                    header1 = [
+                        html.Thead(
+                            html.Tr(
+                                [
+                                    html.Th("两两组合"),
+                                    html.Th("相关性"),
+                                ]
+                            )
+                        )
+                    ]
+                    rows1=[]
+
+                    for pair1, pair2 in pair_combinations:
+                        pair1_df = new[new['pairs'] == pair1].set_index('date')['value']
+                        pair2_df = new[new['pairs'] == pair2].set_index('date')['value']
+
+                        # Calculate the correlation between the pairs
+                        correlation = pair1_df.corr(pair2_df)
+                        out=f"Correlation between {pair1} and {pair2}: {correlation}"
+                        # print(out)
+                        # print(correlation > 0.5)
+                        # print(type(correlation))
+                        if correlation > 0.5:
+                            row = html.Tr([ html.Td(f"{pair1} and {pair2}"),html.Td(correlation)])
+                            
+                            rows1.append(row)
+                            
+                        elif correlation < -0.5:
+                            row = html.Tr([ html.Td(f"{pair1} and {pair2}"),html.Td(correlation)])
+                            
+                            rows1.append(row)
+                            
+                        else:
+                            pass   
+
+
+                    body1 = [html.Tbody(rows1)]
+
+                    table2=dmc.Table(header1 + body1)   
+
+                    # pio.templates.default = "plotly_white"
+                    # print(new.head(5))
+                    # print(type(new.groupby('pairs')))
+                    # corr=new.groupby('pairs')['value'].corr()
+                    # print(corr)
+                    # fig_liang=go.Heatmap(
+                    #     z=corr.mask(mask),
+                    #     x=corr.columns,
+                    #     y=corr.columns,
+                    #     colorscale=px.colors.diverging.RdBu,
+                    #     zmin=-1,
+                    #     zmax=1
+                    # )
+
+                                  
+                return fig,descri,fig_hist,fig_trend,fig_seasonal,fig_resid,table2
             elif suanfa=='mtl':
                 stl_kwargs = {"seasonal_deg": 0} 
                 model = MSTL(new['index'], periods=(24), stl_kwargs=stl_kwargs)
