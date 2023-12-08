@@ -8,6 +8,10 @@
 https://zhuanlan.zhihu.com/p/551306898
 
 
+https://ipython-books.github.io/101-analyzing-the-frequency-components-of-a-signal-with-a-fast-fourier-transform/
+
+
+
 
 https://github.com/sdv-dev/DeepEcho
 
