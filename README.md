@@ -1,6 +1,14 @@
 # time-series-data-playground
 
 
+
+## peak detect
+
+
+https://zhuanlan.zhihu.com/p/551306898
+
+
+
 https://github.com/sdv-dev/DeepEcho
 
 
